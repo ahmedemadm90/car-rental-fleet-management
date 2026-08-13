@@ -167,3 +167,59 @@ class DashboardSummary {
         maintenanceDue: json['maintenance_due'] as List<dynamic>,
       );
 }
+
+class PaymentSession {
+  const PaymentSession({
+    required this.id,
+    required this.status,
+    required this.amount,
+    required this.checkoutUrl,
+  });
+
+  final int id;
+  final String status;
+  final double amount;
+  final String? checkoutUrl;
+
+  factory PaymentSession.fromJson(Map<String, dynamic> json) => PaymentSession(
+        id: json['id'] as int,
+        status: json['status'] as String,
+        amount: double.parse(json['amount'].toString()),
+        checkoutUrl: json['checkout_url'] as String?,
+      );
+}
+
+class AppNotificationItem {
+  const AppNotificationItem({
+    required this.id,
+    required this.title,
+    required this.body,
+    required this.kind,
+    required this.severity,
+    required this.createdAt,
+    required this.readAt,
+  });
+
+  final String id;
+  final String title;
+  final String body;
+  final String kind;
+  final String severity;
+  final DateTime createdAt;
+  final DateTime? readAt;
+
+  bool get isUnread => readAt == null;
+
+  factory AppNotificationItem.fromJson(Map<String, dynamic> json) {
+    final data = json['data'] as Map<String, dynamic>;
+    return AppNotificationItem(
+      id: json['id'] as String,
+      title: data['title'] as String? ?? 'تنبيه',
+      body: data['body'] as String? ?? '',
+      kind: data['kind'] as String? ?? 'general',
+      severity: data['severity'] as String? ?? 'info',
+      createdAt: DateTime.parse(json['created_at'] as String),
+      readAt: json['read_at'] == null ? null : DateTime.parse(json['read_at'] as String),
+    );
+  }
+}

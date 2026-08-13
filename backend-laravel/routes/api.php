@@ -5,7 +5,9 @@ use App\Http\Controllers\Api\BookingController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\ExpenseController;
 use App\Http\Controllers\Api\MaintenanceController;
+use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\OwnerCarController;
+use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\PublicCarController;
 use App\Http\Controllers\Api\RentalShopController;
 use Illuminate\Support\Facades\Route;
@@ -16,14 +18,23 @@ Route::prefix('v1')->group(function (): void {
 
     Route::get('/cars', [PublicCarController::class, 'index']);
     Route::get('/cars/{car}', [PublicCarController::class, 'show']);
+    Route::post('/payments/paymob/webhook', [PaymentController::class, 'webhook'])->name('payments.webhook');
+    Route::get('/payments/paymob/redirect', [PaymentController::class, 'redirect'])->name('payments.redirect');
 
     Route::middleware('auth:sanctum')->group(function (): void {
         Route::get('/auth/me', [AuthController::class, 'me']);
         Route::post('/auth/logout', [AuthController::class, 'logout']);
 
+        Route::get('/notifications', [NotificationController::class, 'index']);
+        Route::patch('/notifications/{notification}/read', [NotificationController::class, 'markRead']);
+        Route::post('/notifications/read-all', [NotificationController::class, 'markAllRead']);
+        Route::post('/devices/push-token', [NotificationController::class, 'registerPushToken']);
+
         Route::get('/bookings/me', [BookingController::class, 'myBookings']);
         Route::post('/bookings', [BookingController::class, 'store']);
         Route::patch('/bookings/{booking}/cancel', [BookingController::class, 'cancel']);
+        Route::post('/bookings/{booking}/payment-checkout', [PaymentController::class, 'createCheckout']);
+        Route::get('/payments/{payment}', [PaymentController::class, 'show']);
 
         Route::get('/owner/dashboard', [DashboardController::class, 'summary']);
         Route::get('/owner/shops', [RentalShopController::class, 'index']);

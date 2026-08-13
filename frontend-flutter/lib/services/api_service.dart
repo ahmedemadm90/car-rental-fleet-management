@@ -125,6 +125,32 @@ class ApiService {
     });
   }
 
+  Future<PaymentSession> createCheckout(int bookingId) async {
+    final json = await _request('POST', '/bookings/$bookingId/payment-checkout');
+    return PaymentSession.fromJson(json['data'] as Map<String, dynamic>);
+  }
+
+  Future<PaymentSession> paymentStatus(int paymentId) async {
+    final json = await _request('GET', '/payments/$paymentId');
+    return PaymentSession.fromJson(json['data'] as Map<String, dynamic>);
+  }
+
+  Future<({List<AppNotificationItem> items, int unreadCount})> notifications() async {
+    final json = await _request('GET', '/notifications');
+    final data = json['data'] as Map<String, dynamic>;
+    final page = data['items'] as Map<String, dynamic>;
+    final items = (page['data'] as List<dynamic>).map((e) => AppNotificationItem.fromJson(e as Map<String, dynamic>)).toList();
+    return (items: items, unreadCount: data['unread_count'] as int);
+  }
+
+  Future<void> markNotificationRead(String notificationId) async {
+    await _request('PATCH', '/notifications/$notificationId/read');
+  }
+
+  Future<void> registerPushToken({required String token, required String platform}) async {
+    await _request('POST', '/devices/push-token', body: {'token': token, 'platform': platform});
+  }
+
   Future<DashboardSummary> dashboard() async {
     final json = await _request('GET', '/owner/dashboard');
     return DashboardSummary.fromJson(json['data'] as Map<String, dynamic>);

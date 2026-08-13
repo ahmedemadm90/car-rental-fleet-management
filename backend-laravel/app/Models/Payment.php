@@ -8,7 +8,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class Payment extends Model
 {
     protected $fillable = [
-        'booking_id', 'amount', 'method', 'status', 'reference', 'paid_at',
+        'booking_id', 'amount', 'method', 'status', 'provider', 'provider_payment_id',
+        'checkout_url', 'gateway_payload', 'reference', 'paid_at', 'expires_at',
     ];
 
     protected function casts(): array
@@ -16,6 +17,8 @@ class Payment extends Model
         return [
             'amount' => 'decimal:2',
             'paid_at' => 'datetime',
+            'expires_at' => 'datetime',
+            'gateway_payload' => 'array',
         ];
     }
 

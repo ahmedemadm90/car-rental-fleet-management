@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 
 import 'models/models.dart';
 import 'services/api_service.dart';
+import 'screens/checkout_screen.dart';
+import 'screens/notifications_screen.dart';
 import 'services/session_controller.dart';
+import 'services/push_notification_service.dart';
 import 'theme/app_theme.dart';
 
 Future<void> main() async {
@@ -10,14 +13,16 @@ Future<void> main() async {
   final api = ApiService();
   final session = SessionController(api);
   await session.restore();
-  runApp(CarRentalApp(api: api, session: session));
+  final pushNotifications = PushNotificationService(api);
+  runApp(CarRentalApp(api: api, session: session, pushNotifications: pushNotifications));
 }
 
 class CarRentalApp extends StatelessWidget {
-  const CarRentalApp({super.key, required this.api, required this.session});
+  const CarRentalApp({super.key, required this.api, required this.session, required this.pushNotifications});
 
   final ApiService api;
   final SessionController session;
+  final PushNotificationService pushNotifications;
 
   @override
   Widget build(BuildContext context) {
@@ -30,7 +35,7 @@ class CarRentalApp extends StatelessWidget {
         home: session.loading
             ? const Scaffold(body: Center(child: CircularProgressIndicator()))
             : session.isAuthenticated
-                ? MainShell(api: api, session: session)
+                ? MainShell(api: api, session: session, pushNotifications: pushNotifications)
                 : AuthScreen(api: api, session: session),
       ),
     );
@@ -148,9 +153,10 @@ class _AuthScreenState extends State<AuthScreen> {
 }
 
 class MainShell extends StatefulWidget {
-  const MainShell({super.key, required this.api, required this.session});
+  const MainShell({super.key, required this.api, required this.session, required this.pushNotifications});
   final ApiService api;
   final SessionController session;
+  final PushNotificationService pushNotifications;
 
   @override
   State<MainShell> createState() => _MainShellState();
@@ -160,16 +166,22 @@ class _MainShellState extends State<MainShell> {
   int _selected = 0;
 
   @override
+  void initState() {
+    super.initState();
+    widget.pushNotifications.initialise();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final owner = widget.session.user!.isOwner;
     final screens = owner
-        ? [OwnerDashboardScreen(api: widget.api), OwnerShopsScreen(api: widget.api), AccountScreen(session: widget.session)]
-        : [CarsScreen(api: widget.api), MyBookingsScreen(api: widget.api), AccountScreen(session: widget.session)];
+        ? [OwnerDashboardScreen(api: widget.api), OwnerShopsScreen(api: widget.api), NotificationsScreen(api: widget.api), AccountScreen(session: widget.session)]
+        : [CarsScreen(api: widget.api), MyBookingsScreen(api: widget.api), NotificationsScreen(api: widget.api), AccountScreen(session: widget.session)];
     final destinations = owner
-        ? const [NavigationDestination(icon: Icon(Icons.dashboard_outlined), selectedIcon: Icon(Icons.dashboard), label: 'لوحة المتابعة'), NavigationDestination(icon: Icon(Icons.garage_outlined), selectedIcon: Icon(Icons.garage), label: 'الأسطول'), NavigationDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: 'حسابي')]
-        : const [NavigationDestination(icon: Icon(Icons.search), selectedIcon: Icon(Icons.search), label: 'اكتشف السيارات'), NavigationDestination(icon: Icon(Icons.event_note_outlined), selectedIcon: Icon(Icons.event_note), label: 'حجوزاتي'), NavigationDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: 'حسابي')];
-    final titles = owner ? ['لوحة المكتب', 'إدارة الأسطول', 'ملفي الشخصي'] : ['اكتشف سيارتك', 'حجوزاتي', 'ملفي الشخصي'];
-    final subtitles = owner ? ['ملخص سريع لأداء أسطولك اليوم', 'سياراتك ومصروفاتها في مكان واحد', 'إعدادات الحساب والجلسة'] : ['اختر سيارة مناسبة لرحلتك القادمة', 'تابع طلباتك وحالة كل حجز', 'بيانات حسابك والجلسة'];
+        ? const [NavigationDestination(icon: Icon(Icons.dashboard_outlined), selectedIcon: Icon(Icons.dashboard), label: 'لوحة المتابعة'), NavigationDestination(icon: Icon(Icons.garage_outlined), selectedIcon: Icon(Icons.garage), label: 'الأسطول'), NavigationDestination(icon: Icon(Icons.notifications_none_rounded), selectedIcon: Icon(Icons.notifications_rounded), label: 'التنبيهات'), NavigationDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: 'حسابي')]
+        : const [NavigationDestination(icon: Icon(Icons.search), selectedIcon: Icon(Icons.search), label: 'اكتشف السيارات'), NavigationDestination(icon: Icon(Icons.event_note_outlined), selectedIcon: Icon(Icons.event_note), label: 'حجوزاتي'), NavigationDestination(icon: Icon(Icons.notifications_none_rounded), selectedIcon: Icon(Icons.notifications_rounded), label: 'التنبيهات'), NavigationDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: 'حسابي')];
+    final titles = owner ? ['لوحة المكتب', 'إدارة الأسطول', 'تنبيهات الأسطول', 'ملفي الشخصي'] : ['اكتشف سيارتك', 'حجوزاتي', 'التنبيهات', 'ملفي الشخصي'];
+    final subtitles = owner ? ['ملخص سريع لأداء أسطولك اليوم', 'سياراتك ومصروفاتها في مكان واحد', 'تابع استحقاقات التأمين والصيانة', 'إعدادات الحساب والجلسة'] : ['اختر سيارة مناسبة لرحلتك القادمة', 'تابع طلباتك وحالة كل حجز', 'اطلع على آخر تحديثات حسابك', 'بيانات حسابك والجلسة'];
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
@@ -411,6 +423,20 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
   void initState() { super.initState(); _bookings = widget.api.myBookings(); }
   void _refresh() => setState(() => _bookings = widget.api.myBookings());
 
+  Future<void> _startPayment(Booking booking) async {
+    try {
+      final session = await widget.api.createCheckout(booking.id);
+      if (session.checkoutUrl == null || session.checkoutUrl!.isEmpty) {
+        throw ApiException('تعذر تجهيز جلسة الدفع.');
+      }
+      if (!mounted) return;
+      final paid = await Navigator.of(context).push<bool>(MaterialPageRoute(builder: (_) => CheckoutScreen(api: widget.api, session: session)));
+      if (paid == true) _refresh();
+    } on ApiException catch (error) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error.message), backgroundColor: Colors.red));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<List<Booking>>(
@@ -445,6 +471,10 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
                     ]),
                     const Padding(padding: EdgeInsets.symmetric(vertical: 13), child: Divider(height: 1)),
                     Row(children: [const Icon(Icons.date_range_outlined, size: 17, color: AppColors.muted), const SizedBox(width: 6), Expanded(child: Text('${booking.startDate.toIso8601String().split('T').first}  ←  ${booking.endDate.toIso8601String().split('T').first}', style: Theme.of(context).textTheme.bodySmall)), Text('${booking.totalAmount.toStringAsFixed(0)} ج.م', style: const TextStyle(color: AppColors.teal, fontWeight: FontWeight.w800))]),
+                    if (booking.status == 'pending' || booking.status == 'confirmed') ...[
+                      const SizedBox(height: 13),
+                      SizedBox(width: double.infinity, child: FilledButton.icon(onPressed: () => _startPayment(booking), icon: const Icon(Icons.lock_outline_rounded, size: 18), label: const Text('ادفع الآن لتأكيد الحجز'))),
+                    ],
                   ]),
                 ),
               );

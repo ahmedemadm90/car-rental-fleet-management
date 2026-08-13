@@ -89,3 +89,48 @@ flutter test
 ## ما يحتاج قراراً أو بيانات خارجية قبل الإنتاج
 
 تظل هذه عناصر تكامل إنتاجي وليست أخطاء أو ملفات مفقودة: بوابة تحصيل إلكتروني، ربط تأمين المركبات، التحقق من الهوية ورخصة القيادة، العقود والتوقيع الإلكتروني، إرسال الإشعارات، خرائط ومواقع التسليم، وأجهزة GPS. يفضّل تحديد الدولة القانونية ومزودي هذه الخدمات قبل إضافتها، لأن المتطلبات والبيانات الحساسة تختلف حسب السوق.
+
+## الإشعارات الذكية والصيانة والتأمين
+
+أضيف النظام سجلاً دائماً للإشعارات داخل الحساب، ورموز أجهزة المستخدمين، وأمراً مجدولاً يفحص يومياً استحقاق تغيير الزيت والفحص الدوري وانتهاء التأمين. يرسل النظام إشعاراً إلى مالك مكتب التأجير ويمنع تكرار التنبيه نفسه في اليوم ذاته.
+
+```bash
+cd backend-laravel
+php artisan notifications:send-vehicle-reminders
+php artisan schedule:work
+```
+
+في الإنتاج، يجب تشغيل مجدول Laravel كل دقيقة أو تشغيل `schedule:work` كخدمة مستمرة. أمر الفحص نفسه يعمل كل يوم الساعة 09:00 وفق المنطقة الزمنية للخادم.
+
+### تفعيل Push عبر Firebase
+
+التطبيق يحتوي على تكامل Firebase Messaging، لكنه **معطل افتراضياً** حتى لا يفشل البناء من دون مشروع Firebase. لإرساله فعلياً، أنشئ مشروع Firebase ثم شغّل `flutterfire configure` من مجلد Flutter لإضافة إعدادات Android/iOS/Web الخاصة بمشروعك. بعد ذلك ضع مسار حساب خدمة Firebase على الخادم في `FIREBASE_CREDENTIALS`، وفعّل `FCM_ENABLED=true`، ثم شغّل التطبيق هكذا:
+
+```bash
+flutter run --dart-define=FIREBASE_ENABLED=true --dart-define=API_BASE_URL=https://your-api.example/api/v1
+```
+
+ينبغي تفعيل Push Notifications وBackground Modes ورفع مفتاح APNs إلى Firebase عند إصدار iOS. لا ترفع ملفات Firebase أو حساب الخدمة إلى GitHub.
+
+## الدفع الإلكتروني عبر Paymob Hosted Checkout
+
+يُنشئ التطبيق جلسة دفع للحجز، ثم يعرض صفحة Paymob المستضافة داخل التطبيق. لا تمر بيانات البطاقات عبر تطبيق Flutter أو خادم Laravel. لا تُعتبر نتيجة صفحة العودة وحدها تأكيداً للدفع؛ الـ Webhook الموقّع بـ HMAC هو المصدر الوحيد لتغيير حالة الدفع والحجز إلى مؤكد.
+
+أضف القيم الآتية إلى `backend-laravel/.env` بعد إنشاء حساب Paymob اختباري أو إنتاجي:
+
+```dotenv
+PAYMOB_SECRET_KEY=
+PAYMOB_PUBLIC_KEY=
+PAYMOB_INTEGRATION_ID=
+PAYMOB_HMAC_SECRET=
+PAYMOB_CURRENCY=EGP
+APP_URL=https://your-api.example
+```
+
+بعد نشر الخادم بعنوان HTTPS عام، سجّل رابط Webhook التالي في إعدادات Paymob:
+
+```text
+https://your-api.example/api/v1/payments/paymob/webhook
+```
+
+اختبر أولاً ببيانات Sandbox، ثم نفّذ دورة كاملة: إنشاء الحجز، فتح Checkout، دفع تجريبي، Webhook موثق، تأكيد حالة الحجز، ثم اختبار الفشل أو الإلغاء. مفاتيح Paymob السرية وHMAC ومفتاح Firebase يجب أن تبقى على الخادم فقط ولا توضع أبداً في Flutter أو GitHub.

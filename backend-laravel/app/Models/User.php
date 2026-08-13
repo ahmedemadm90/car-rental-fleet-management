@@ -35,6 +35,16 @@ class User extends Authenticatable
         return $this->hasMany(Booking::class, 'customer_id');
     }
 
+    public function pushTokens()
+    {
+        return $this->hasMany(PushToken::class);
+    }
+
+    public function routeNotificationForFcm(): array
+    {
+        return $this->pushTokens()->pluck('token')->all();
+    }
+
     public function isOwner(): bool
     {
         return $this->role === 'owner';

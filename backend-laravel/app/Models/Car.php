@@ -11,7 +11,8 @@ class Car extends Model
     protected $fillable = [
         'rental_shop_id', 'make', 'model', 'year', 'plate_number', 'color', 'seats',
         'daily_rate', 'wedding_rate', 'current_odometer_km', 'oil_change_interval_km',
-        'next_oil_change_at_km', 'next_inspection_date', 'status', 'features', 'image_url',
+        'next_oil_change_at_km', 'next_inspection_date', 'insurance_expires_at', 'insurance_provider',
+        'insurance_policy_number', 'status', 'features', 'image_url',
     ];
 
     protected function casts(): array
@@ -20,6 +21,7 @@ class Car extends Model
             'daily_rate' => 'decimal:2',
             'wedding_rate' => 'decimal:2',
             'next_inspection_date' => 'date',
+            'insurance_expires_at' => 'date',
         ];
     }
 
